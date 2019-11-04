@@ -27,14 +27,7 @@ from data_processing import *
 import scipy as sp 
 from sklearn.metrics import *
 from sklearn.linear_model import Ridge
-from sklearn.linear_model import LinearRegression
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import BaggingClassifier
 
 
 # # Transform Learning
