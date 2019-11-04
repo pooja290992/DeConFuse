@@ -41,8 +41,6 @@ def plotPrecisionRecall(ytrue,scores,title,pos_class = 1):
     precision, recall, _ = precision_recall_curve(ytrue, scores[:,pos_class], pos_label=pos_class)
     average_precision = average_precision_score(ytrue, scores[:,pos_class])
     plt.plot(recall, precision,label=str(pos_class) + ' as +ve class(ap = %0.2f)' % average_precision)
-    #lw = 2
-    #plt.plot([0, 1], [0, 1])
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title('Precision-Recall Curve for '+title)
@@ -71,9 +69,7 @@ def getStocksList(data_df):
     df1 = df1[['SYMBOL','CLOSE']].reset_index()
     df1.rename(columns= {'CLOSE':0},inplace=True)
     stocks_list = df1.loc[df1[0]>807]['SYMBOL'].values.tolist()
-    #stocks_list = list(g.groups.keys())
     print('length : ' , len(stocks_list))
-    #print(stocks_list)
     return stocks_list
 
 
@@ -85,8 +81,7 @@ def compAnnualReturns(stock,ypred,data_df,window_size,limit,sub_one=True):
     if sub_one:
         stock_table_df  = stock_table_df[0:stock_table_df.shape[0]-1]
     stock_table_df['Predicted'] = ypred
-    
-    #print(stock_table_df.head(2))
+
     i = 0
     startCapital = 100000.0
     totalTransactionLength = 0
@@ -119,30 +114,18 @@ def compAnnualReturns(stock,ypred,data_df,window_size,limit,sub_one=True):
     while(k<rows):
         if(stock_table_df.iloc[k]['Predicted'] == 0):
             buyPoint = stock_table_df.iloc[k]['CLOSE']
-            #buyPoint = stock_table_df.iloc[k]['LOW']
             buyPoint = buyPoint*100
             shareNumber = (money-transactionCharges)/buyPoint
             forceSell = False
-            #startDate = datetime.datetime.strptime(stock_table_df.iloc[k]['DATE'], "%Y-%m-%d").date()
     
             for j in range(k,rows):
                 sellPoint = stock_table_df.iloc[j]['CLOSE']
-                #sellPoint = stock_table_df.iloc[j]['HIGH']
                 sellPoint = sellPoint*100;
                 moneyTemp = (shareNumber*sellPoint)-transactionCharges
                     
-                #stop loss %10
-                #if(money*0.9>moneyTemp)
-                #    money = moneyTemp
-                #    forceSell = true
 
-                #if(stock_table_df.iloc[j][0] == 0 or forceSell == True):
                 if(stock_table_df.iloc[j]['Predicted'] == 1 or forceSell == True):
                     sellPoint = stock_table_df.iloc[j]['CLOSE']
-                    #sellPoint = stock_table_df.iloc[j]['HIGH']
-                    #endDate = datetime.datetime.strptime(stock_table_df.iloc[j]['DATE'], "%Y-%m-%d").date()
-                    #dt = endDate-startDate
-                    #num_days += dt.days
                     sellPoint = sellPoint*100
                     
                     
@@ -173,11 +156,9 @@ def compAnnualReturns(stock,ypred,data_df,window_size,limit,sub_one=True):
                         minimumMoney = money
 
                     transactionCount += 1
-                    #print("\\\\"+transactionCount+"."+"("+(k+1)+"-"+(j+1)+") => " + round(sellPoint,2) + "-" + round(buyPoint,2)+ "= " + round(gain,2) + " Capital: \\$" + Precision.round(money,2) );
-                    #print(str(transactionCount) + "." + "("+str(k+1)+"-"+str(j+1)+") => " + str(round((gain*shareNumber),2)) + " Capital: Rs" + str(round(money,2)))
-                    #builder.append(transactionCount+"."+"("+(k+1)+"-"+(j+1)+") => " + round((gain*shareNumber),2) + " Capital: Rs" + round(money,2)+"\n");
 
-                    #System.out.println(Precision.round(money,2) );
+                    #print(str(transactionCount) + "." + "("+str(k+1)+"-"+str(j+1)+") => " + str(round((gain*shareNumber),2)) + " Capital: Rs" + str(round(money,2)))
+
                     totalPercentProfit = totalPercentProfit + (gain/buyPoint);
 
                     totalTransactionLength = totalTransactionLength + (j-k);
@@ -188,13 +169,10 @@ def compAnnualReturns(stock,ypred,data_df,window_size,limit,sub_one=True):
 
     startDate = datetime.datetime.strptime(stock_table_df.iloc[0]['DATE'], "%Y-%m-%d").date()
     endDate = datetime.datetime.strptime(stock_table_df.iloc[rows-1]['DATE'], "%Y-%m-%d").date()
-    #print(startDate)
-    #print(endDate)
+
     dt = endDate-startDate
     print('days:',dt.days)
-    #print('num_days:',num_days)
     numberOfDays = dt.days
-    #numberOfDays = num_days
     numberOfYears = numberOfDays/365
     if transactionCount == 0:
         transactionCount = 1e-5

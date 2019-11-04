@@ -451,7 +451,6 @@ print(param_path)
 
 t_0 = time.time()
 tr_loss_dict = {}
-#stocks_list = ['ABIRLANUVO','ACC','ADANIENT','ADANIPORTS','ADANIPOWER','AJANTPHARM', 'ALBK']#['ADANIPORTS']
 for stock in stocks_list[start:end]:
     t0 = time.time()
     _,windowed_data,_, next_day_values = getWindowedDataReg(data_df,stock,window_size)
@@ -461,9 +460,7 @@ for stock in stocks_list[start:end]:
     next_day_values = next_day_values[:,0]
     next_day_values = next_day_values[0:next_day_values.shape[0]-1]
     X_train,Y_train,X_test,Y_test = splitData(feat_wise_data,next_day_values,test_size=test_size)
-    #X_test = X_test[0:X_test.shape[0]-1]
     prev_day_values = prev_day_values[X_train.shape[0]:][:,0]
-    #prev_day_values = prev_day_values[0:prev_day_values.shape[0]-1]
     print('prev_day_values.shape:',prev_day_values.shape)
     print('X_test.shape:',X_test.shape)
     print('Y_test.shape:',Y_test.shape)
@@ -664,7 +661,6 @@ def clfRF(Ztrain,Y_train,Ztest,Y_test,n_clf=5,depth=1,rnd_state=11):
 
 gap = 5.0
 log_interval = 1
-tr_acc_min = 54
 cnt = 0 
 pos_label = 1
 depth = 4

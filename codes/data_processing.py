@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 
 
-#base_path = '/home/pooja/Desktop/IIITD/Research/Stock_class_classification/'
+
 base_path = '../'
 
 #loads the data 
@@ -39,26 +39,14 @@ def getData(fileName):
 def labelData(data):
     labels = np.where(data['CLOSE'] - data['OPEN']>0,1,0)
     data['Stock_class'] = labels
-    ##print(type(labels),labels.shape)
-    ##print(data.shape)
     labels = pd.DataFrame(labels,columns= ['Stock_class'])    
-    ##print(labels.head())
-    ##print(labels.shape)
-    ##print(data.head())
-    ##display(labels.describe())
     return data,labels
 
 
 def labelDataReg(data):
     labels = np.where(data['CLOSE'] - data['OPEN']>0,1,0)
     data['Stock_class'] = labels
-    ##print(type(labels),labels.shape)
-    ##print(data.shape)
-    labels = pd.DataFrame(labels,columns= ['Stock_class'])    
-    ##print(labels.head())
-    ##print(labels.shape)
-    ##print(data.head())
-    ##display(labels.describe())
+    labels = pd.DataFrame(labels,columns= ['Stock_class']) 
     return data,labels
     
     
@@ -84,8 +72,6 @@ def getWindowedData(data_df,group_name = 'ABIRLANUVO',window_size = 7,features_l
     X = g.get_group(group_name)
     X.sort_values(by = ['DATE'],inplace=True)
     rows,cols=X.shape
-    #display(X.tail())
-    #display(type(X[0:10]))#.shape)
     Stock_class=X[['Stock_class']].copy()
     Stock_class=np.asarray(Stock_class)
     stock_class=Stock_class.reshape(1,rows)
@@ -102,10 +88,6 @@ def getWindowedData(data_df,group_name = 'ABIRLANUVO',window_size = 7,features_l
         if end_idx < rows:
             windowed_data.append(X[start_idx:end_idx])
             stock_table.extend(X[end_idx:end_idx+1][features_list].values.tolist())
-    ##print('len of windowed_data:',len(windowed_data))
-    ##print('type of windowed_data 0th element is :', type(windowed_data[0]))
-    ##print('shape of windowed_data 0th element is :', windowed_data[0].shape)
-    ##print('windowed data ')
     return labels_new,windowed_data,stock_table
     
 
@@ -116,8 +98,6 @@ def getWindowedDataReg(data_df,group_name = 'ABIRLANUVO',window_size = 7,feature
     X = g.get_group(group_name)
     X.sort_values(by = ['DATE'],inplace=True)
     rows,cols=X.shape
-    #display(X.tail())
-    #display(type(X[0:10]))#.shape)
     Stock_class=X[['Stock_class']].copy()
     Stock_class=np.asarray(Stock_class)
     stock_class=Stock_class.reshape(1,rows)
@@ -126,11 +106,6 @@ def getWindowedDataReg(data_df,group_name = 'ABIRLANUVO',window_size = 7,feature
     temp = X.copy()
     temp = temp.reset_index()
     temp2 = temp[features_list[0:5]]
-    #print(temp2.head(12))
-    #print(type(temp2.values))
-    #print(temp2.values.shape)
-    #vals = temp2.values
-    #print(vals[window_size:])
     next_day_values = temp2.values[window_size:]
     ##print(labels_new.shape[0])
     windowed_data = []
@@ -144,11 +119,6 @@ def getWindowedDataReg(data_df,group_name = 'ABIRLANUVO',window_size = 7,feature
         if end_idx < rows:
             windowed_data.append(X[start_idx:end_idx])
             stock_table.extend(X[end_idx:end_idx+1][features_list].values.tolist())
-            future_prices
-    ##print('len of windowed_data:',len(windowed_data))
-    ##print('type of windowed_data 0th element is :', type(windowed_data[0]))
-    ##print('shape of windowed_data 0th element is :', windowed_data[0].shape)
-    ##print('windowed data ')
     return labels_new,windowed_data,stock_table, next_day_values
     
     
@@ -158,24 +128,16 @@ def getFeatWiseData(windowed_data,features_list):
     temp_data = {}
     for feat in features_list: 
         temp_data[feat] = []
-    ##print(temp_data)
-    #print(windowed_data[0]['CLOSE'].values.tolist())
     for i in range(len(windowed_data)):
         temp = windowed_data[i]
         for feat in features_list: 
             temp_data[feat].append(temp[feat])
-    #print('len of close series : ',len(temp_data['CLOSE']))
     keys = list(temp_data.keys())
-    #print(keys)
     temp_records =  np.asarray(temp_data[keys[0]])
     for key in keys[1:]:
         temp = np.asarray(temp_data[key])
         temp_records = np.dstack((temp_records,temp))
-    ##print(temp_records.shape)
     return temp_records
-
-
-#def getLastRecord(stock):
     
     
 
@@ -189,7 +151,6 @@ def getPrevDayFeatures(feat_wise_data):
     
     
 def toFloatTensor(numpy_array):
-    # Numpy array -> Tensor
     return torch.from_numpy(numpy_array).float()
     
     
