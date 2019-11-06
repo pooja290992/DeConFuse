@@ -42,12 +42,6 @@ def labelData(data):
     labels = pd.DataFrame(labels,columns= ['Stock_class'])    
     return data,labels
 
-
-def labelDataReg(data):
-    labels = np.where(data['CLOSE'] - data['OPEN']>0,1,0)
-    data['Stock_class'] = labels
-    labels = pd.DataFrame(labels,columns= ['Stock_class']) 
-    return data,labels
     
     
 def splitData(data,labels,test_size = 0.20):

@@ -300,9 +300,6 @@ def train_model(epoch, model, optimizer, train_loader, batch_size, mu, eps, lam)
         final_output = output
         
         loss = model.computeLoss(final_output,mu,eps,lam)
-        if epoch%plot_epoch_interval==0:
-            train_loss.append(loss)
-            epochs_list.append(epoch)
         final_loss += loss
         loss.backward()
         optimizer.step()
@@ -311,7 +308,7 @@ def train_model(epoch, model, optimizer, train_loader, batch_size, mu, eps, lam)
         prev_data = data
         prev_future_prices = future_prices
     print('Epoch : {} , Training loss : {:.4f}\n'.format(epoch, final_loss.item()))
-    return train_loss#, T_list, Z_list
+    return final_loss.item()
 
  
     
@@ -342,8 +339,10 @@ def train_on_batch(lr,epochs,momentum,X_train,Y_train,X_test,Y_test,batch_size):
                                  amsgrad=False)
 
     for epoch in range(1, epochs + 1):
-        train_loss = train_model(epoch, model, optimizer, train_loader, batch_size, mu, eps, lam)
-
+        tr_loss = train_model(epoch, model, optimizer, train_loader, batch_size, mu, eps, lam)
+        if epoch%plot_epoch_interval==0:
+            train_loss.append(tr_loss)
+            epochs_list.append(epoch)
     model.eval()
 
     S_train = Variable(torch.from_numpy(X_train).float(), requires_grad=False)
@@ -368,7 +367,8 @@ fileName = 'phd_research_data.csv'
 data_df = getData(fileName)
 if fileName == 'phd_research_data.csv':
     data_df.drop(['Unnamed: 0'],inplace=True,axis=1)
-data_df,labels_df = labelData(data_df.copy())
+#we are not using these labels
+data_df,_ = labelData(data_df.copy())
 data = np.asarray(data_df)
 
 
@@ -406,7 +406,7 @@ train_accuracies = []
 epochs_list = []
 learning_rates = []
 epoch_interval = 10
-plot_epoch_interval = 5
+plot_epoch_interval = 1
 test_accuracies = []
 
 
@@ -443,7 +443,6 @@ print(param_path)
 
 
 t_0 = time.time()
-tr_loss_dict = {}
 for stock in stocks_list[start:end]:
     t0 = time.time()
     _,windowed_data,_, next_day_values = getWindowedDataReg(data_df,stock,window_size)
@@ -472,9 +471,6 @@ for stock in stocks_list[start:end]:
         else:
             batch_size = X_train.shape[0]
         Ztrain, Ztest,train_loss = train_on_batch(lr,epochs,momentum,X_train,Y_train,X_test,Y_test,batch_size)
-        tr_loss_dict[stock] = {}
-        tr_loss_dict[stock] = train_loss
-        train_loss = []
         xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
         ytr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +  '_' + str(test_size) + '_tl_ytrain' + str(seed) + '.npy'
         xte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_xtest' + str(seed) + '.npy'
@@ -561,7 +557,6 @@ for stock in stocks_list[start:end]:
         yte_pred, mae, mse, rmse = ridge_regressor(Ztrain, Y_train, Ztest, Y_test, alpha = alpha, random_state = random_state)
         pred_labels = np.where((yte_pred - prev_day_value)>0,1,0)
         true_labels = np.where((Y_test - prev_day_value)>0,1,0)
-        te_acc = round(accuracy_score(true_labels, pred_labels)*100,3)
         precision, recall, f1_score,_ = precision_recall_fscore_support(true_labels, pred_labels, pos_label=1, average='binary')
         limit = Ztrain.shape[0]
         #print(pred_labels)
@@ -578,7 +573,6 @@ for stock in stocks_list[start:end]:
             test_acc_dict[stock]['mae2'] = mae2
             test_acc_dict[stock]['mse'] = mse
             test_acc_dict[stock]['rmse'] = rmse
-            test_acc_dict[stock]['Test Accuracy'] = te_acc
             AR = compAnnualReturns(stock,pred_labels,data_df,window_size,limit)
             test_acc_dict[stock]['AR'] = AR
             test_acc_dict[stock]['Precision'] = precision
@@ -665,8 +659,6 @@ for stock in stocks_list[start:end]:
     t01 = time.time()
     temp_dict = {}
     rf_test_acc_dict[stock] = {}
-    best_tr_acc = 0.0
-    best_te_acc = 0.0
     best_f1_score = 0.0
     f1_score = 0.0
     best_ar = 0.0
@@ -714,7 +706,6 @@ for stock in stocks_list[start:end]:
                 fpr, tpr, thresholds = roc_curve(Y_test_true_labels, te_scores[:,pos_label], pos_label = pos_label)
                 AUC_val = auc(fpr, tpr)
                 best_ar = AR
-                best_te_acc = te_acc
                 best_f1_score = f1_score
                 rf_test_acc_dict[stock]['seed'] = seed
                 rf_test_acc_dict[stock]['depth'] = depth
