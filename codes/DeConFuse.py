@@ -406,7 +406,7 @@ train_accuracies = []
 epochs_list = []
 learning_rates = []
 epoch_interval = 10
-plot_epoch_interval = 1
+plot_epoch_interval = 5
 test_accuracies = []
 
 
