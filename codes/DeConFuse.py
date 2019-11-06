@@ -519,7 +519,6 @@ if os.path.exists(pred_file_name):
 # In[27]:
 
 
-gap = 5.0
 log_interval = 1
 cnt = 0 
 alpha = 0.1
@@ -538,8 +537,6 @@ for stock in stocks_list[start:end]:
     found = 0
     ytr_pred, yte_pred, tr_scores, te_score = [],[],[],[]
     AR = 0
-    temp_ytr_pred, temp_yte_pred, temp_tr_scores, temp_te_scores = [],[],[],[]
-    temp_AR = 0
     prev_val_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) +  '_tl_yprev_cp.npy'
     prev_day_value = np.load(prev_val_path)
     for sd in range(1,seed_range+1):
@@ -564,7 +561,6 @@ for stock in stocks_list[start:end]:
         print('mae2 :', mae2)
         print('precision :{:.4f}, recall:{:.4f}, f1_score : {:.4f}'.format(precision, recall, f1_score))
         if  f1_score > best_f1_score:
-            best_te_acc = te_acc
             best_mae = mae
             found = 1
             best_f1_score = f1_score
@@ -646,7 +642,6 @@ def clfRF(Ztrain,Y_train,Ztest,Y_test,n_clf=5,depth=1,rnd_state=11):
 # In[22]:
 
 
-gap = 5.0
 log_interval = 1
 cnt = 0 
 pos_label = 1
@@ -665,10 +660,6 @@ for stock in stocks_list[start:end]:
     found = 0
     ytr_pred, yte_pred, tr_scores, te_score = [],[],[],[]
     AR = 0
-    temp_ytr_pred, temp_yte_pred, temp_tr_scores, temp_te_scores = [],[],[],[]
-    temp_f1_score = 0
-    temp_auc = 0
-    temp_AR= 0
     _,windowed_data,_, _ = getWindowedDataReg(data_df,stock,window_size)
     feat_wise_data = getFeatWiseData(windowed_data,features_list)
     prev_day_values = getPrevDayFeatures(feat_wise_data)
@@ -692,8 +683,7 @@ for stock in stocks_list[start:end]:
             print('seed : {: }, num_clfs : {: }, depth : {: }, random_state : {: }'.format(seed,num_clfs,depth,random_state))
             Y_train_true_labels = np.where((Y_train - ytr_prev_day)>0,1,0)
             Y_test_true_labels = np.where((Y_test - yte_prev_day)>0,1,0)
-            ytr_pred, yte_pred, tr_scores, te_scores = clfRF(Ztrain,Y_train_true_labels, Ztest, Y_test_true_labels, n_clf=num_clfs,
-                                                                        depth=depth, rnd_state=random_state)
+            ytr_pred, yte_pred, tr_scores, te_scores = clfRF(Ztrain,Y_train_true_labels, Ztest, Y_test_true_labels, n_clf=num_clfs,depth=depth, rnd_state=random_state)
             limit = Ztrain.shape[0]
             precision, recall, f1_score,_ = precision_recall_fscore_support(Y_test_true_labels, yte_pred, pos_label=1, average='binary')
             
