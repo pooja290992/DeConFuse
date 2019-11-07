@@ -433,9 +433,9 @@ mpl_ks = 2
 custom_batch_size_flag = False
 bs = 32
 if custom_batch_size_flag == True:
-    param_path = '_op1_' + str(out_pl1) + '_op2_' + str(out_pl2)             +'_mp1_' + str(maxpl1) + '_mp2_' + str(maxpl2) + '_ks1_' + str(ks1) + '_ks2_' + str(ks2)             + '_bs_' + str(bs) + '_new'
+    param_path = '_op1_' + str(out_pl1) + '_op2_' + str(out_pl2) +'_mp1_' + str(maxpl1) + '_mp2_' + str(maxpl2) + '_ks1_' + str(ks1) + '_ks2_' + str(ks2)             + '_bs_' + str(bs) + '_new'
 else:
-    param_path = '_op1_' + str(out_pl1) + '_op2_' + str(out_pl2)                 +'_mp1_' + str(maxpl1) + '_mp2_' + str(maxpl2) + '_ks1_' + str(ks1) + '_ks2_' + str(ks2) + '_new'
+    param_path = '_op1_' + str(out_pl1) + '_op2_' + str(out_pl2) +'_mp1_' + str(maxpl1) + '_mp2_' + str(maxpl2) + '_ks1_' + str(ks1) + '_ks2_' + str(ks2) + '_new'
 print(param_path)
 
 
@@ -487,29 +487,27 @@ for stock in stocks_list[start:end]:
     t1 = time.time()
     print('time taken for one stock through all seeds',datetime.timedelta(seconds = t1-t0))
 t_1 = time.time()
-print('time taken for 125 stocks through all seeds : ',str(datetime.timedelta(seconds = t_1-t_0)))
+print('time taken for stocks through all seeds : ',str(datetime.timedelta(seconds = t_1-t_0)))
 
 
-# # External Regressor + Thresholding
+# # External Regressor 
 
 # In[14]:
+
 
 
 def ridge_regressor(Xtrain, Ytrain, Xtest, Ytest, alpha = 1.0, random_state = 1):
     clf = Ridge(alpha=alpha,random_state = random_state)
     clf.fit(Xtrain, Ytrain) 
     y_pred = clf.predict(Xtest)
-    mae = mean_absolute_error(Ytest, y_pred)
-    mse = mean_squared_error(Ytest, y_pred)
-    rmse = math.sqrt(mse)
-    return y_pred, mae, mse,rmse
+    return y_pred
 
 
 # In[26]:
 
 
-res_file_name = base_path+'Results2/Reg2/res_' + param_path + 'final.csv'
-pred_file_name = base_path+'Results2/Reg2/res_' + param_path + '_pred_global_final.csv'
+res_file_name = base_path+'Results2/Reg2/res_reg_measures.csv'
+pred_file_name = base_path+'Results2/Reg2/res_reg_pred.csv'
 if os.path.exists(res_file_name):
     os.remove(res_file_name)
 if os.path.exists(pred_file_name):
@@ -519,342 +517,185 @@ if os.path.exists(pred_file_name):
 # In[27]:
 
 
-log_interval = 1
-cnt = 0 
-alpha = 0.1
-random_state = 1
-test_acc_dict  = {}
-final_results_df = pd.DataFrame()
-t0 = time.time()
-for stock in stocks_list[start:end]:
-    t01 = time.time()
-    temp_dict = {}
-    test_acc_dict[stock] = {}
-    best_ar = 0.0
-    best_mae = 100000.0
-    best_f1_score = 0.0
-    mae, mse, rmse = 0.0, 0.0, 0.0
-    found = 0
-    ytr_pred, yte_pred, tr_scores, te_score = [],[],[],[]
-    AR = 0
-    prev_val_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) +  '_tl_yprev_cp.npy'
-    prev_day_value = np.load(prev_val_path)
-    for sd in range(1,seed_range+1):
-        seed = sd
-        print('stock : ', stock)
-        xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
-        ytr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +  '_' + str(test_size) + '_tl_ytrain' + str(seed) + '.npy'
-        xte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_xtest' + str(seed) + '.npy'
-        yte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_ytest' + str(seed) + '.npy'
-        Ztrain = np.load(xtr_path)
-        Y_train = np.load(ytr_path)
-        Ztest = np.load(xte_path)
-        Y_test = np.load(yte_path)
-        print('seed : {: }'.format(seed))
-        yte_pred, mae, mse, rmse = ridge_regressor(Ztrain, Y_train, Ztest, Y_test, alpha = alpha, random_state = random_state)
-        pred_labels = np.where((yte_pred - prev_day_value)>0,1,0)
-        true_labels = np.where((Y_test - prev_day_value)>0,1,0)
-        precision, recall, f1_score,_ = precision_recall_fscore_support(true_labels, pred_labels, pos_label=1, average='binary')
-        limit = Ztrain.shape[0]
-        #print(pred_labels)
-        mae2 = np.sum(np.abs(yte_pred-Y_test))/np.sum(Y_test)
-        print('mae2 :', mae2)
-        print('precision :{:.4f}, recall:{:.4f}, f1_score : {:.4f}'.format(precision, recall, f1_score))
-        if  f1_score > best_f1_score:
-            best_mae = mae
-            found = 1
-            best_f1_score = f1_score
-            test_acc_dict[stock]['seed'] = seed
-            test_acc_dict[stock]['mae'] = mae
-            test_acc_dict[stock]['mae2'] = mae2
-            test_acc_dict[stock]['mse'] = mse
-            test_acc_dict[stock]['rmse'] = rmse
-            AR = compAnnualReturns(stock,pred_labels,data_df,window_size,limit)
-            test_acc_dict[stock]['AR'] = AR
-            test_acc_dict[stock]['Precision'] = precision
-            test_acc_dict[stock]['Recall'] = recall
-            test_acc_dict[stock]['F1_score'] = f1_score
-            temp_dict['pred_cp'] = yte_pred
-            temp_dict['Stock_Class'] = true_labels
-            temp_dict['ypred'] = pred_labels
-            temp_dict['found'] = found
-        
-    temp_final_df = pd.DataFrame(Y_test,columns=['actual_close_price'])
-    temp_final_df['predicted_close_price'] = temp_dict['pred_cp']
-    temp_final_df['prev_day_close_price'] = prev_day_value
-    temp_final_df['Stock_Class'] = temp_dict['Stock_Class']
-    temp_final_df['ypred'] = temp_dict['ypred']
-    temp_final_df['difference'] = temp_final_df['predicted_close_price'] - temp_final_df['actual_close_price']
-    temp_final_df['abs_difference'] = temp_final_df['difference'].abs()
-    temp_final_df['SYMBOL'] = stock
-    temp_final_df['found'] = found
-    final_results_df = pd.concat([final_results_df,temp_final_df],axis = 0)
-    cnt += 1
-    if cnt%log_interval==0:
-        df = pd.DataFrame.from_dict(data = test_acc_dict, orient = 'index').reset_index()
-        print('test_acc_dict data:')
-        print(df.head(2))
-        if not os.path.exists(res_file_name):
-            df.to_csv(res_file_name,index=None, header='column_names')
-        else: # else it exists so append without writing the header
-            df.to_csv(res_file_name, mode='a',index=None, header=False)
-        if not os.path.exists(pred_file_name):
-            final_results_df.to_csv(pred_file_name,index=None, header='column_names')
-        else: # else it exists so append without writing the header
-            final_results_df.to_csv(pred_file_name, mode='a',index=None, header=False)
-        print('final_results_df data:')
-        print(final_results_df.head(2))
-        test_acc_dict = {}
-        final_results_df = pd.DataFrame()
-    t11 = time.time()
-    print('time taken for one stock with ridge: ' ,datetime.timedelta(seconds = t11 - t01))
-    print('*'*100)
-t1 = time.time()
-print('time taken for all stocks with ridge: ' ,datetime.timedelta(seconds = t1 - t0))
-
-
-# # External Classifier
-
-# In[18]:
-
-
-rf_res_file_name = base_path+'Results2/Reg2/Classification/convTL_TL_classification_2layers_results.csv'
-rf_pred_file_name = base_path+'Results2/Reg2/Classification/convTL_TL_classification_2layers_pred.csv'
-if os.path.exists(rf_res_file_name):
-     os.remove(rf_res_file_name)
-if os.path.exists(rf_pred_file_name):
-     os.remove(rf_pred_file_name)
-
-
-# In[19]:
-
-
-def clfRF(Ztrain,Y_train,Ztest,Y_test,n_clf=5,depth=1,rnd_state=11):
-    clf_rf = RandomForestClassifier(n_estimators=n_clf, max_depth=depth,random_state=rnd_state)
-    clf_rf.fit(Ztrain, Y_train)
-    ytr_rf_pred = clf_rf.predict(Ztrain)
-    yte_rf_pred = clf_rf.predict(Ztest)
-    tr_scores = clf_rf.predict_proba(Ztrain)
-    te_scores = clf_rf.predict_proba(Ztest)
-    return ytr_rf_pred, yte_rf_pred, tr_scores, te_scores
-
-
-# In[22]:
-
-
-log_interval = 1
-cnt = 0 
-pos_label = 1
-depth = 4
-num_clfs = 5
-rf_test_acc_dict  = {}
-final_results_df = pd.DataFrame()
-t0 = time.time()
-for stock in stocks_list[start:end]:
-    t01 = time.time()
-    temp_dict = {}
-    rf_test_acc_dict[stock] = {}
-    best_f1_score = 0.0
-    f1_score = 0.0
-    best_ar = 0.0
-    found = 0
-    ytr_pred, yte_pred, tr_scores, te_score = [],[],[],[]
-    AR = 0
-    _,windowed_data,_, _ = getWindowedDataReg(data_df,stock,window_size)
-    feat_wise_data = getFeatWiseData(windowed_data,features_list)
-    prev_day_values = getPrevDayFeatures(feat_wise_data)
-    prev_day_values = prev_day_values[:,0]
-    for sd in range(1,seed_range+1):
-        seed = sd
-        print('stock : ', stock)
-        xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
-        ytr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +  '_' + str(test_size) + '_tl_ytrain' + str(seed) + '.npy'
-        xte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_xtest' + str(seed) + '.npy'
-        yte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_ytest' + str(seed) + '.npy'
-        Ztrain = np.load(xtr_path)
-        Y_train = np.load(ytr_path)
-        Ztest = np.load(xte_path)
-        Y_test = np.load(yte_path)
-        ytr_prev_day = prev_day_values[:Y_train.shape[0]]
-        yte_prev_day  = prev_day_values[Y_train.shape[0]:]
-        yte_prev_day  = yte_prev_day[:yte_prev_day.shape[0]-1]
-
-        for random_state in range(1,21):
-            print('seed : {: }, num_clfs : {: }, depth : {: }, random_state : {: }'.format(seed,num_clfs,depth,random_state))
-            Y_train_true_labels = np.where((Y_train - ytr_prev_day)>0,1,0)
-            Y_test_true_labels = np.where((Y_test - yte_prev_day)>0,1,0)
-            ytr_pred, yte_pred, tr_scores, te_scores = clfRF(Ztrain,Y_train_true_labels, Ztest, Y_test_true_labels, n_clf=num_clfs,depth=depth, rnd_state=random_state)
-            limit = Ztrain.shape[0]
-            precision, recall, f1_score,_ = precision_recall_fscore_support(Y_test_true_labels, yte_pred, pos_label=1, average='binary')
-            
-            print('F1_score : ',f1_score)
-
-            if f1_score > best_f1_score:
-                found = 1
-                AR = compAnnualReturns(stock,yte_pred,data_df,window_size,limit)
-                print('AR: ',AR)
-                fpr, tpr, thresholds = roc_curve(Y_test_true_labels, te_scores[:,pos_label], pos_label = pos_label)
-                AUC_val = auc(fpr, tpr)
-                best_ar = AR
-                best_f1_score = f1_score
-                rf_test_acc_dict[stock]['seed'] = seed
-                rf_test_acc_dict[stock]['depth'] = depth
-                rf_test_acc_dict[stock]['num_clfs'] = num_clfs
-                rf_test_acc_dict[stock]['random_state'] = random_state
-                rf_test_acc_dict[stock]['F1_score'] = round(f1_score,3)
-                rf_test_acc_dict[stock]['Precision'] = round(precision,3)
-                rf_test_acc_dict[stock]['Recall'] = round(recall,3)
-                rf_test_acc_dict[stock]['AUC'] = round(AUC_val,3)
-                rf_test_acc_dict[stock]['AR'] = best_ar
-                rf_test_acc_dict[stock]['found'] = found
-                temp_dict['yte_pred'] = yte_pred
-                temp_dict['te_scores'] = te_scores
-            
-    temp_final_df = pd.DataFrame(Y_test,columns=['ytrue'])
-    temp_final_df['ypred'] = temp_dict['yte_pred']
-    temp_scores_df = pd.DataFrame(temp_dict['te_scores']) 
-    temp_final_df = pd.concat([temp_final_df,temp_scores_df],axis = 1)
-    temp_final_df['SYMBOL'] = stock
-    final_results_df = pd.concat([final_results_df,temp_final_df],axis = 0)
-    cnt += 1
-    if cnt%log_interval==0:
-        df = pd.DataFrame.from_dict(data = rf_test_acc_dict, orient = 'index').reset_index()
-        print('rf_test_acc_dict data:')
-        print(df.head(2))
-        if not os.path.exists(rf_res_file_name):
-            df.to_csv(rf_res_file_name,index=None, header='column_names')
-        else: # else it exists so append without writing the header
-            df.to_csv(rf_res_file_name, mode='a',index=None, header=False)
-        if not os.path.exists(rf_pred_file_name):
-            final_results_df.to_csv(rf_pred_file_name,index=None, header='column_names')
-        else: # else it exists so append without writing the header
-            final_results_df.to_csv(rf_pred_file_name, mode='a',index=None, header=False)
-        print('final_results_df data:')
-        print(final_results_df.head(2))
-        rf_test_acc_dict = {}
-        final_results_df = pd.DataFrame()
-    t11 = time.time()
-    print('time taken for one stock grid-search tuning with RF: ' ,datetime.timedelta(seconds = t11 - t01))
-    print('*'*100)
-t1 = time.time()
-print('time taken for all stocks grid-search tuning with RF: ' ,datetime.timedelta(seconds = t1 - t0))
-
-
-# # Predict other Regression Values
-
-# In[28]:
-
-
-layers2_res_df = pd.read_csv(base_path+'Results2/Reg2/res_' + param_path + 'final.csv') 
-print(layers2_res_df.head())    
-layers2_res_df = layers2_res_df[['index','seed']]
-print(layers2_res_df.head())
-
-
-# In[29]:
-
-
 alpha = 0.1
 random_state = 1
 test_pred_dict = {}
 test_measures_dict = {}
 cnt = 0
 t0 = time.time()
-for stock in stocks_list[start:end]: 
+df_temp1 = pd.read_csv(base_path+'data/init.csv') 
+for stock in stocks_list[start:end]:
     t01 = time.time()
     print('cnt:',cnt)
     print('stock:',stock)
     test_pred_dict[stock] = {}
     test_measures_dict[stock] = {}
     _, _, _, next_day_values = getWindowedDataReg(data_df,stock,window_size)
+    
     next_day_values = next_day_values[0:next_day_values.shape[0]-1]
-    seed = int(layers2_res_df.loc[layers2_res_df['index']==stock]['seed'].values.tolist()[0])
-    print('seed : ',seed)
+    seed = int(df_temp1.loc[df_temp1['index']==stock]['seed'].values.tolist()[0])
     xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
     xte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_xtest' + str(seed) + '.npy'
     Ztrain = np.load(xtr_path)
     Ztest = np.load(xte_path)
     #for i in range(1,5):
     limit = Ztrain.shape[0]
-    next_open_prices, next_high_prices, next_low_prices, next_day_volume = next_day_values[:,1],next_day_values[:,2],                                                                        next_day_values[:,3], next_day_values[:,4]
+    
+    next_close_prices, next_open_prices, next_high_prices, next_low_prices, next_day_volume = next_day_values[:,0], next_day_values[:,1],next_day_values[:,2],                                                                        next_day_values[:,3], next_day_values[:,4]
+    Y_train_cp = next_close_prices[0:limit] 
+    Y_test_cp = next_close_prices[limit:]
+    y_pred_cp = ridge_regressor(Ztrain, Y_train_cp, Ztest, Y_test_cp, alpha = alpha, random_state = random_state)
+    #weighted MAE 
+    mae_cp = np.sum(np.abs(y_pred_cp - Y_test_cp))/np.sum(Y_test_cp)
+    test_pred_dict[stock]['True_CP'] = Y_test_cp
+    test_pred_dict[stock]['Predicted_CP'] = y_pred_cp
+    test_measures_dict[stock]['MAE_CP'] = mae_cp
+    
     Y_train_op = next_open_prices[0:limit] 
     Y_test_op = next_open_prices[limit:]
-    y_pred_op, mae_op, mse_op, rmse_op = ridge_regressor(Ztrain, Y_train_op, Ztest, Y_test_op, alpha = alpha, random_state = random_state)
-    mae2_op = np.sum(np.abs(y_pred_op - Y_test_op))/np.sum(Y_test_op)
+    y_pred_op = ridge_regressor(Ztrain, Y_train_op, Ztest, Y_test_op, alpha = alpha, random_state = random_state)
+    mae_op = np.sum(np.abs(y_pred_op - Y_test_op))/np.sum(Y_test_op)
     test_pred_dict[stock]['True_OP'] = Y_test_op
     test_pred_dict[stock]['Predicted_OP'] = y_pred_op
     test_measures_dict[stock]['MAE_OP'] = mae_op
-    test_measures_dict[stock]['MAE2_OP'] = mae2_op
-    test_measures_dict[stock]['MSE_OP'] = mse_op
-    test_measures_dict[stock]['RMSE_OP'] = rmse_op
     
     
     Y_train_h = next_high_prices[0:limit] 
     Y_test_h = next_high_prices[limit:]
-    y_pred_h, mae_h, mse_h, rmse_h = ridge_regressor(Ztrain, Y_train_h, Ztest, Y_test_h, alpha = alpha, random_state = random_state)
-    mae2_h = np.sum(np.abs(y_pred_h - Y_test_h))/np.sum(Y_test_h)
+    y_pred_h = ridge_regressor(Ztrain, Y_train_h, Ztest, Y_test_h, alpha = alpha, random_state = random_state)
+    mae_h = np.sum(np.abs(y_pred_h - Y_test_h))/np.sum(Y_test_h)
     test_pred_dict[stock]['True_HP'] = Y_test_h
     test_pred_dict[stock]['Predicted_HP'] = y_pred_h
     test_measures_dict[stock]['MAE_HP'] = mae_h
-    test_measures_dict[stock]['MAE2_HP'] = mae2_h
-    test_measures_dict[stock]['MSE_HP'] = mse_h
-    test_measures_dict[stock]['RMSE_HP'] = rmse_h
     
     Y_train_l = next_low_prices[0:limit] 
     Y_test_l = next_low_prices[limit:]
-    y_pred_l, mae_l, mse_l, rmse_l = ridge_regressor(Ztrain, Y_train_l, Ztest, Y_test_l, alpha = alpha, random_state = random_state)
-    mae2_l = np.sum(np.abs(y_pred_l - Y_test_l))/np.sum(Y_test_l)
+    y_pred_l = ridge_regressor(Ztrain, Y_train_l, Ztest, Y_test_l, alpha = alpha, random_state = random_state)
+    mae_l = np.sum(np.abs(y_pred_l - Y_test_l))/np.sum(Y_test_l)
     test_pred_dict[stock]['True_LP'] = Y_test_l
     test_pred_dict[stock]['Predicted_LP'] = y_pred_l
     test_measures_dict[stock]['MAE_LP'] = mae_l
-    test_measures_dict[stock]['MAE2_LP'] = mae2_l
-    test_measures_dict[stock]['MSE_LP'] = mse_l
-    test_measures_dict[stock]['RMSE_LP'] = rmse_l
     
     Y_train_vol = next_day_volume[0:limit] 
     Y_test_vol = next_day_volume[limit:]
-    y_pred_vol, mae_vol, mse_vol, rmse_vol = ridge_regressor(Ztrain, Y_train_vol, Ztest, Y_test_vol, alpha = alpha, random_state = random_state)
-    mae2_vol = np.sum(np.abs(y_pred_vol - Y_test_vol))/np.sum(Y_test_vol)
+    y_pred_vol = ridge_regressor(Ztrain, Y_train_vol, Ztest, Y_test_vol, alpha = alpha, random_state = random_state)
+    mae_vol = np.sum(np.abs(y_pred_vol - Y_test_vol))/np.sum(Y_test_vol)
     test_pred_dict[stock]['True_Vol'] = Y_test_vol
     test_pred_dict[stock]['Predicted_Vol'] = y_pred_vol
     test_measures_dict[stock]['MAE_Vol'] = mae_vol
-    test_measures_dict[stock]['MAE2_Vol'] = mae2_vol
-    test_measures_dict[stock]['MSE_Vol'] = mse_vol
-    test_measures_dict[stock]['RMSE_Vol'] = rmse_vol
     
     t11 = time.time()
     print('time taken for one stock with ridge: ' ,datetime.timedelta(seconds = t11 - t01))
     print('*'*100)
-t1 = time.time()
-print('time taken for all stocks with ridge: ' ,datetime.timedelta(seconds = t1 - t0))
 
 
-# In[30]:
 
 
-res_file_name = base_path+'Results2/Reg2/res_reg2_' + param_path + 'final.csv'
-pred_file_name = base_path+'Results2/Reg2/res_reg2_' + param_path + '_pred_global_final.csv'
-if os.path.exists(res_file_name):
-    os.remove(res_file_name)
-if os.path.exists(pred_file_name):
-    os.remove(pred_file_name)
-
-
-# In[31]:
+# In[ ]:
 
 
 measures_df = pd.DataFrame.from_dict(data = test_measures_dict, orient = 'index').reset_index()
 test_pred_df = pd.DataFrame.from_dict(data = test_pred_dict, orient = 'index').reset_index()
-
-
-# In[32]:
-
-
 measures_df.to_csv(res_file_name,index=None, header='column_names')
 test_pred_df.to_csv(pred_file_name,index=None, header='column_names')
 
 
 # In[ ]:
+
+
+
+# # External Classifier
+
+# In[18]:
+
+def clfRF(Ztrain,Y_train,Ztest,Y_test,n_clf=5,depth=1,rnd_state=11):
+ clf_rf = RandomForestClassifier(n_estimators=n_clf, max_depth=depth,random_state=rnd_state)
+ clf_rf.fit(Ztrain, Y_train)
+ ytr_rf_pred = clf_rf.predict(Ztrain)
+ yte_rf_pred = clf_rf.predict(Ztest)
+ tr_scores = clf_rf.predict_proba(Ztrain)
+ te_scores = clf_rf.predict_proba(Ztest)
+ return ytr_rf_pred, yte_rf_pred, tr_scores, te_scores
+
+
+
+# In[19]:
+
+rf_res_file_name = base_path+'Results2/Reg2/Classification/res_classification_measures.csv'
+rf_pred_file_name = base_path+'Results2/Reg2/Classification/res_classification_pred.csv'
+if os.path.exists(rf_res_file_name):
+  os.remove(rf_res_file_name)
+if os.path.exists(rf_pred_file_name):
+  os.remove(rf_pred_file_name)
+     
+     
+# In[22]:
+
+
+cnt = 0 
+pos_label = 1
+depth = 3
+num_clfs = 5
+rf_test_measures_dict  = {}
+final_results_df = pd.DataFrame()
+t0 = time.time()
+df_temp2 = pd.read_csv(base_path+'data/init.csv') 
+for stock in stocks_list[start:end]:
+ t01 = time.time()
+ temp_dict = {}
+ rf_test_measures_dict[stock] = {}
+ _,windowed_data,_, _ = getWindowedDataReg(data_df,stock,window_size)
+ feat_wise_data = getFeatWiseData(windowed_data,features_list)
+ prev_day_values = getPrevDayFeatures(feat_wise_data)
+ prev_day_values = prev_day_values[:,0]
+ seed = int(df_temp2.loc[df_temp2['index']==stock]['seed'].values.tolist()[0])
+ random_state = int(df_temp2.loc[df_temp2['index']==stock]['random_state'].values.tolist()[0])
+ print('stock : ', stock)
+ xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
+ ytr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +  '_' + str(test_size) + '_tl_ytrain' + str(seed) + '.npy'
+ xte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_xtest' + str(seed) + '.npy'
+ yte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_ytest' + str(seed) + '.npy'
+ Ztrain = np.load(xtr_path)
+ Y_train = np.load(ytr_path)
+ Ztest = np.load(xte_path)
+ Y_test = np.load(yte_path)
+ ytr_prev_day = prev_day_values[:Y_train.shape[0]]
+ yte_prev_day  = prev_day_values[Y_train.shape[0]:]
+ yte_prev_day  = yte_prev_day[:yte_prev_day.shape[0]-1]
+
+ Y_train_true_labels = np.where((Y_train - ytr_prev_day)>0,1,0)
+ Y_test_true_labels = np.where((Y_test - yte_prev_day)>0,1,0)
+ ytr_pred, yte_pred, tr_scores, te_scores = clfRF(Ztrain,Y_train_true_labels, Ztest, Y_test_true_labels, n_clf=num_clfs,depth=depth, rnd_state=random_state)
+ limit = Ztrain.shape[0]
+ precision, recall, f1_score,_ = precision_recall_fscore_support(Y_test_true_labels, yte_pred, pos_label=1, average='binary')   
+ print(f1_score)
+ AR = compAnnualReturns(stock,yte_pred,data_df,window_size,limit)
+ #print('AR: ',AR)
+ fpr, tpr, thresholds = roc_curve(Y_test_true_labels, te_scores[:,pos_label], pos_label = pos_label)
+ AUC_val = auc(fpr, tpr)
+ rf_test_measures_dict[stock]['F1_score'] = round(f1_score,3)
+ rf_test_measures_dict[stock]['Precision'] = round(precision,3)
+ rf_test_measures_dict[stock]['Recall'] = round(recall,3)
+ rf_test_measures_dict[stock]['AUC'] = round(AUC_val,3)
+ rf_test_measures_dict[stock]['AR'] = AR
+         
+ temp_final_df = pd.DataFrame(Y_test,columns=['ytrue'])
+ temp_final_df['ypred'] = yte_pred
+ temp_scores_df = pd.DataFrame(te_scores) 
+ temp_final_df = pd.concat([temp_final_df,temp_scores_df],axis = 1)
+ temp_final_df['SYMBOL'] = stock
+ final_results_df = pd.concat([final_results_df,temp_final_df],axis = 0)
+ t11 = time.time()
+ print('time taken for one stock with RF: ' ,datetime.timedelta(seconds = t11 - t01))
+ print('*'*100)
+t1 = time.time()
+print('time taken for all stocks with RF: ' ,datetime.timedelta(seconds = t1 - t0))
+
+
+measures_df = pd.DataFrame.from_dict(data = rf_test_measures_dict, orient = 'index').reset_index()
+measures_df.to_csv(rf_res_file_name,index=None, header='column_names')
+final_results_df.to_csv(rf_pred_file_name,index=None, header='column_names')
+
 
 
 
