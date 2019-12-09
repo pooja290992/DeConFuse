@@ -75,7 +75,7 @@ def getStocksList(data_df):
 
 
 def compAnnualReturns(stock,ypred,data_df,window_size,limit,sub_one=True):
-    _,_,stock_table = getWindowedData(data_df,stock,window_size)
+    _,_,stock_table, _ = getWindowedDataReg(data_df,stock,window_size)
     stock_table_df = pd.DataFrame(stock_table,columns = ['CLOSE','OPEN','HIGH','LOW','CONTRACTS','DATE','Stock_Class'])
     stock_table_df  = stock_table_df[limit:]
     if sub_one:
