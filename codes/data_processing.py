@@ -28,10 +28,8 @@ base_path = '../'
 def getData(fileName):
     filepath = base_path + 'data/' + fileName
     data = pd.read_csv(filepath,sep = ',')
-    if fileName == 'all_stocks_2006-01-01_to_2018-01-01.csv':
-        data.rename(columns = {'Date':'DATE','Low':'LOW','High':'HIGH','Close':'CLOSE','Open':'OPEN','Volume':'CONTRACTS','Name':'SYMBOL'},inplace=True)
     ##display('data\'s shape : ',data.shape)
-    display(data.head())
+    print(data.head())
     ##display(data.describe())
     return data
     

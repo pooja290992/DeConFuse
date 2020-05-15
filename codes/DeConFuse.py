@@ -246,13 +246,13 @@ class Network(nn.Module):
         return loss
 
 
-    def computeLoss(self,predictions,mu,eps,lam):
+    def computeLoss(self,predictions,lam,mu):
         loss1 = self.conv_loss_distance()
-        loss2 = self.conv_loss_frobenius() * eps
-        loss3 = self.conv_loss_logdet() * mu
+        loss2 = self.conv_loss_frobenius() * mu
+        loss3 = self.conv_loss_logdet() * lam
         loss4 = self.loss_distance(predictions)
-        loss5 = self.loss_frobenius() * eps
-        loss6 = self.loss_logdet() * mu
+        loss5 = self.loss_frobenius() * mu
+        loss6 = self.loss_logdet() * lam
         loss = loss1 + loss2 + loss3 + loss4 + loss5 + loss6
         return loss
 
@@ -266,7 +266,7 @@ class Network(nn.Module):
 # In[3]:
 
 
-def train_model(epoch, model, optimizer, train_loader, batch_size, mu, eps, lam):
+def train_model(epoch, model, optimizer, train_loader, batch_size, mu,lam):
     model.train()
     t0 = time.time()
     correct = 0
@@ -299,7 +299,7 @@ def train_model(epoch, model, optimizer, train_loader, batch_size, mu, eps, lam)
         
         final_output = output
         
-        loss = model.computeLoss(final_output,mu,eps,lam)
+        loss = model.computeLoss(final_output,lam,mu)
         final_loss += loss
         loss.backward()
         optimizer.step()
@@ -321,9 +321,8 @@ def train_on_batch(lr,epochs,momentum,X_train,Y_train,X_test,Y_test,batch_size):
     test_loader = DataLoader(RegFinancialData(X_test,Y_test),batch_size=batch_size,shuffle=False) 
     
     
-    mu = 0.01
-    eps = 0.0001
-    lam = 0 
+    lam = 0.01
+    mu = 0.0001
     out_planes1 = out_pl1
     out_planes2 = out_pl2
     ksize1 = ks1
@@ -339,7 +338,7 @@ def train_on_batch(lr,epochs,momentum,X_train,Y_train,X_test,Y_test,batch_size):
                                  amsgrad=False)
 
     for epoch in range(1, epochs + 1):
-        tr_loss = train_model(epoch, model, optimizer, train_loader, batch_size, mu, eps, lam)
+        tr_loss = train_model(epoch, model, optimizer, train_loader, batch_size, mu, lam)
         if epoch%plot_epoch_interval==0:
             train_loss.append(tr_loss)
             epochs_list.append(epoch)
@@ -363,10 +362,9 @@ def train_on_batch(lr,epochs,momentum,X_train,Y_train,X_test,Y_test,batch_size):
 
 
 window_size = 5
-fileName = 'phd_research_data.csv'
+fileName = 'stock_data.csv'
 data_df = getData(fileName)
-if fileName == 'phd_research_data.csv':
-    data_df.drop(['Unnamed: 0'],inplace=True,axis=1)
+data_df.drop(['Unnamed: 0'],inplace=True,axis=1)
 #we are not using these labels
 data_df,_ = labelData(data_df.copy())
 data = np.asarray(data_df)
@@ -395,7 +393,6 @@ def checkClassImbal(Y_train):
 
 start = 0
 end = 150
-seed_range = 10
 
 
 # In[8]:
@@ -443,8 +440,8 @@ print(param_path)
 
 
 t_0 = time.time()
+df_temp1 = pd.read_csv(base_path+'data/init.csv') 
 for stock in stocks_list[start:end]:
-    t0 = time.time()
     _,windowed_data,_, next_day_values = getWindowedDataReg(data_df,stock,window_size)
     feat_wise_data = getFeatWiseData(windowed_data,features_list)
     feat_wise_data = feat_wise_data[:feat_wise_data.shape[0]-1]
@@ -459,35 +456,31 @@ for stock in stocks_list[start:end]:
     print('next_day_values.shape:', next_day_values.shape)
     prev_val_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_yprev_cp.npy'
     np.save(prev_val_path,prev_day_values)
-    for sd in range(1,seed_range+1):
-        t01 = time.time()
-        seed = sd
-        print('Training for stock :',stock)
-        print('seed : ',seed)
-        print('starting at time:',t0)
-        print('*'*100)
-        if custom_batch_size_flag:
-            batch_size = bs
-        else:
-            batch_size = X_train.shape[0]
-        Ztrain, Ztest,train_loss = train_on_batch(lr,epochs,momentum,X_train,Y_train,X_test,Y_test,batch_size)
-        xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
-        ytr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +  '_' + str(test_size) + '_tl_ytrain' + str(seed) + '.npy'
-        xte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_xtest' + str(seed) + '.npy'
-        yte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_ytest' + str(seed) + '.npy'
-        np.save(xtr_path,Ztrain)
-        np.save(ytr_path,Y_train)
-        np.save(xte_path,Ztest)
-        np.save(yte_path,Y_test)
-        t11 = time.time()
-        print('*'*100)
-        #print('*'*100)
-        print('\n')
-        print('time taken for training one stock:',datetime.timedelta(seconds = t11-t01))
-    t1 = time.time()
-    print('time taken for one stock through all seeds',datetime.timedelta(seconds = t1-t0))
+    seed = int(df_temp1.loc[df_temp1['index']==stock]['seed'].values.tolist()[0])
+    print('Training for stock :',stock)
+    print('seed : ',seed)
+    t01 = time.time()
+    print('starting at time:',t01)
+    print('*'*100)
+    if custom_batch_size_flag:
+        batch_size = bs
+    else:
+        batch_size = X_train.shape[0]
+    Ztrain, Ztest,train_loss = train_on_batch(lr,epochs,momentum,X_train,Y_train,X_test,Y_test,batch_size)
+    xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
+    ytr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +  '_' + str(test_size) + '_tl_ytrain' + str(seed) + '.npy'
+    xte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_xtest' + str(seed) + '.npy'
+    yte_path = base_path + 'data/Reg2/TL_Test/' + stock + param_path +  '_' + str(test_size) + '_tl_ytest' + str(seed) + '.npy'
+    np.save(xtr_path,Ztrain)
+    np.save(ytr_path,Y_train)
+    np.save(xte_path,Ztest)
+    np.save(yte_path,Y_test)
+    t11 = time.time()
+    print('*'*100)
+    print('\n')
+    print('time taken for one stock',datetime.timedelta(seconds = t11-t01))
 t_1 = time.time()
-print('time taken for stocks through all seeds : ',str(datetime.timedelta(seconds = t_1-t_0)))
+print('time taken for all stocks : ',str(datetime.timedelta(seconds = t_1-t_0)))
 
 
 # # External Regressor 
@@ -506,8 +499,8 @@ def ridge_regressor(Xtrain, Ytrain, Xtest, Ytest, alpha = 1.0, random_state = 1)
 # In[26]:
 
 
-res_file_name = base_path+'Results2/Reg2/res_reg_measures.csv'
-pred_file_name = base_path+'Results2/Reg2/res_reg_pred.csv'
+res_file_name = base_path+'Results/Reg/res_reg_measures.csv'
+pred_file_name = base_path+'Results/Reg/res_reg_pred.csv'
 if os.path.exists(res_file_name):
     os.remove(res_file_name)
 if os.path.exists(pred_file_name):
@@ -515,15 +508,12 @@ if os.path.exists(pred_file_name):
 
 
 # In[27]:
-
-
 alpha = 0.1
 random_state = 1
 test_pred_dict = {}
 test_measures_dict = {}
 cnt = 0
 t0 = time.time()
-df_temp1 = pd.read_csv(base_path+'data/init.csv') 
 for stock in stocks_list[start:end]:
     t01 = time.time()
     print('cnt:',cnt)
@@ -600,6 +590,8 @@ measures_df.to_csv(res_file_name,index=None, header='column_names')
 test_pred_df.to_csv(pred_file_name,index=None, header='column_names')
 
 
+
+
 # In[ ]:
 
 
@@ -621,8 +613,8 @@ def clfRF(Ztrain,Y_train,Ztest,Y_test,n_clf=5,depth=1,rnd_state=11):
 
 # In[19]:
 
-rf_res_file_name = base_path+'Results2/Reg2/Classification/res_classification_measures.csv'
-rf_pred_file_name = base_path+'Results2/Reg2/Classification/res_classification_pred.csv'
+rf_res_file_name = base_path+'Results/Classification/res_classification_measures.csv'
+rf_pred_file_name = base_path+'Results/Classification/res_classification_pred.csv'
 if os.path.exists(rf_res_file_name):
   os.remove(rf_res_file_name)
 if os.path.exists(rf_pred_file_name):
@@ -631,7 +623,6 @@ if os.path.exists(rf_pred_file_name):
      
 # In[22]:
 
-
 cnt = 0 
 pos_label = 1
 depth = 3
@@ -639,7 +630,6 @@ num_clfs = 5
 rf_test_measures_dict  = {}
 final_results_df = pd.DataFrame()
 t0 = time.time()
-df_temp2 = pd.read_csv(base_path+'data/init.csv') 
 for stock in stocks_list[start:end]:
  t01 = time.time()
  temp_dict = {}
@@ -648,8 +638,8 @@ for stock in stocks_list[start:end]:
  feat_wise_data = getFeatWiseData(windowed_data,features_list)
  prev_day_values = getPrevDayFeatures(feat_wise_data)
  prev_day_values = prev_day_values[:,0]
- seed = int(df_temp2.loc[df_temp2['index']==stock]['seed'].values.tolist()[0])
- random_state = int(df_temp2.loc[df_temp2['index']==stock]['random_state'].values.tolist()[0])
+ seed = int(df_temp1.loc[df_temp1['index']==stock]['seed'].values.tolist()[0])
+ random_state = int(df_temp1.loc[df_temp1['index']==stock]['random_state'].values.tolist()[0])
  print('stock : ', stock)
  xtr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +'_' + str(test_size) + '_tl_xtrain' + str(seed) + '.npy'
  ytr_path = base_path + 'data/Reg2/TL_Train/' + stock + param_path +  '_' + str(test_size) + '_tl_ytrain' + str(seed) + '.npy'
@@ -679,7 +669,7 @@ for stock in stocks_list[start:end]:
  rf_test_measures_dict[stock]['AUC'] = round(AUC_val,3)
  rf_test_measures_dict[stock]['AR'] = AR
          
- temp_final_df = pd.DataFrame(Y_test,columns=['ytrue'])
+ temp_final_df = pd.DataFrame(Y_test_true_labels,columns=['ytrue'])
  temp_final_df['ypred'] = yte_pred
  temp_scores_df = pd.DataFrame(te_scores) 
  temp_final_df = pd.concat([temp_final_df,temp_scores_df],axis = 1)
@@ -695,6 +685,7 @@ print('time taken for all stocks with RF: ' ,datetime.timedelta(seconds = t1 - t
 measures_df = pd.DataFrame.from_dict(data = rf_test_measures_dict, orient = 'index').reset_index()
 measures_df.to_csv(rf_res_file_name,index=None, header='column_names')
 final_results_df.to_csv(rf_pred_file_name,index=None, header='column_names')
+
 
 
 
